@@ -123,8 +123,8 @@ export default function ProjectsPage() {
       status: (formData.status as any) || (formData.department === 'ecommerce' ? 'Active' : 'Working on')
     };
 
-    if (editingProject) updateProject(editingProject.id, projectData);
-    else addProject(projectData);
+    if (editingProject) await updateProject(editingProject.id, projectData);
+    else await addProject(projectData);
     
     setShowModal(false);
     Swal.fire({ title: 'Saved Successfully', icon: 'success', timer: 1000, showConfirmButton: false, toast: true });
@@ -152,7 +152,7 @@ export default function ProjectsPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       
-      {/* 🚀 EXECUTIVE HEADER */}
+      {/* Header */}
       <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '24px', padding: '20px 25px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: 'var(--shadow)', gap: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: '#fff' }}>📁</div>
@@ -176,6 +176,7 @@ export default function ProjectsPage() {
                  <>
                     <StatusToggle label="Working" active={statusFilter === 'Working on'} onClick={() => setStatusFilter('Working on')} color="#2563eb" />
                     <StatusToggle label="New" active={statusFilter === 'New Project'} onClick={() => setStatusFilter('New Project')} color="#7c3aed" />
+                    <StatusToggle label="Submited" active={statusFilter === 'Submited'} onClick={() => setStatusFilter('Submited')} color="#059669" />
                  </>
                )}
             </div>
@@ -312,52 +313,66 @@ export default function ProjectsPage() {
                   </div>
                )}
 
-               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
-                  <div>
-                    <label style={labelStyle}>{isEcomView ? 'TOTAL PROFIT ($)' : 'TOTAL COST ($)'}</label>
+               {/* 💰 Financials & Timeline (HIDDEN FOR E-COMMERCE PER USER REQUEST) */}
+               {!isEcomView && (
+                 <>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                        <div>
+                            <label style={labelStyle}>TOTAL COST ($)</label>
+                            <input type="number" value={formData.cost || 0} onChange={(e) => setFormData({ ...formData, cost: Number(e.target.value) })} style={inputStyle} />
+                        </div>
+                        <div>
+                            <label style={labelStyle}>RECEIVED ($)</label>
+                            <input type="number" value={formData.amountReceived || 0} onChange={(e) => setFormData({ ...formData, amountReceived: Number(e.target.value) })} style={{...inputStyle, color:'#059669', fontWeight:'900'}} />
+                        </div>
+                        <div>
+                            <label style={labelStyle}>PAYMENT METHOD</label>
+                            <input type="text" value={formData.paymentMethod || ''} onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })} style={inputStyle} placeholder="Paypal/Bank" />
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                        <div>
+                            <label style={labelStyle}>WORKING DAYS</label>
+                            <input type="number" value={formData.workingDays || 0} onChange={(e) => setFormData({ ...formData, workingDays: Number(e.target.value) })} style={inputStyle} />
+                        </div>
+                        <div>
+                            <label style={labelStyle}>PAYMENT STATUS</label>
+                            <select value={formData.paymentStatus || 'upfront_50'} onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value as any })} style={inputStyle}>
+                            <option value="not_received">Not Received</option>
+                            <option value="upfront_50">Upfront 50% Received</option>
+                            <option value="remaining_50">Remaining 50% Received</option>
+                            <option value="100_received">100% Fully Received</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style={labelStyle}>DEADLINE</label>
+                            <input type="date" value={formData.deadline || ''} onChange={(e) => setFormData({ ...formData, deadline: e.target.value })} style={inputStyle} />
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                        <div>
+                            <label style={labelStyle}>CLIENT NAME</label>
+                            <input type="text" value={formData.clientName || ''} onChange={(e) => setFormData({ ...formData, clientName: e.target.value })} style={inputStyle} placeholder="Client Name" />
+                        </div>
+                        <div>
+                            <label style={labelStyle}>CLIENT EMAIL</label>
+                            <input type="email" value={formData.clientEmail || ''} onChange={(e) => setFormData({ ...formData, clientEmail: e.target.value })} style={inputStyle} placeholder="client@example.com" />
+                        </div>
+                    </div>
+                 </>
+               )}
+
+               {/* E-Commerce Only: Total Profit Field */}
+               {isEcomView && (
+                 <div style={{ marginBottom: '20px' }}>
+                    <label style={labelStyle}>TOTAL PROFIT ($)</label>
                     <input type="number" value={formData.cost || 0} onChange={(e) => setFormData({ ...formData, cost: Number(e.target.value) })} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>RECEIVED ($)</label>
-                    <input type="number" value={formData.amountReceived || 0} onChange={(e) => setFormData({ ...formData, amountReceived: Number(e.target.value) })} style={{...inputStyle, color:'#059669', fontWeight:'900'}} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>PAYMENT METHOD</label>
-                    <input type="text" value={formData.paymentMethod || ''} onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })} style={inputStyle} placeholder="Paypal/Bank" />
-                  </div>
-               </div>
+                 </div>
+               )}
 
-               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom: '20px' }}>
-                  <div>
-                    <label style={labelStyle}>WORKING DAYS</label>
-                    <input type="number" value={formData.workingDays || 0} onChange={(e) => setFormData({ ...formData, workingDays: Number(e.target.value) })} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>PAYMENT STATUS</label>
-                    <select value={formData.paymentStatus || 'upfront_50'} onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value as any })} style={inputStyle}>
-                      <option value="not_received">Not Received</option>
-                      <option value="upfront_50">Upfront 50% Received</option>
-                      <option value="remaining_50">Remaining 50% Received</option>
-                      <option value="100_received">100% Fully Received</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>DEADLINE</label>
-                    <input type="date" value={formData.deadline || ''} onChange={(e) => setFormData({ ...formData, deadline: e.target.value })} style={inputStyle} />
-                  </div>
-               </div>
-
-               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                  <div>
-                    <label style={labelStyle}>CLIENT NAME</label>
-                    <input type="text" value={formData.clientName || ''} onChange={(e) => setFormData({ ...formData, clientName: e.target.value })} style={inputStyle} placeholder="Client Name" />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>CLIENT EMAIL</label>
-                    <input type="email" value={formData.clientEmail || ''} onChange={(e) => setFormData({ ...formData, clientEmail: e.target.value })} style={inputStyle} placeholder="client@example.com" />
-                  </div>
-               </div>
-
+               {/* Manager Metadata Row */}
                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '25px' }}>
                   <div>
                     <label style={labelStyle}>MY NAME (MANAGER)</label>

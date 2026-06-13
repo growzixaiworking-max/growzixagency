@@ -68,6 +68,12 @@ export interface TaskLog {
   listings?: number;
   targetProfit?: number;
   trackingSet?: boolean;
+  ordersStatus?: 'Done' | 'Pending';
+  ordersReason?: string;
+  trackingStatus?: 'Done' | 'Pending';
+  trackingReason?: string;
+  sheetsStatus?: 'Done' | 'Pending';
+  sheetsReason?: string;
 }
 
 export interface Expense {

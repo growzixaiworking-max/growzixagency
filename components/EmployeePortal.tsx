@@ -13,7 +13,6 @@ export default function EmployeePortal() {
   const [note, setNote] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [view, setView] = useState<'portal' | 'history' | 'performance'>('portal');
-  const [searchQuery, setSearchQuery] = useState('');
   
   // Performance Modal State
   const [showPerfModal, setShowPerfModal] = useState(false);
@@ -23,7 +22,13 @@ export default function EmployeePortal() {
     netProfit: 0,
     listings: 0,
     accountName: '',
-    task: ''
+    task: '',
+    ordersStatus: 'Done',
+    trackingStatus: 'Done',
+    sheetsStatus: 'Done',
+    ordersReason: '',
+    trackingReason: '',
+    sheetsReason: ''
   });
 
   // Local state to prevent race conditions while context updates
@@ -58,9 +63,12 @@ export default function EmployeePortal() {
 
   // 📈 PERFORMANCE LOGIC
   const myPerformance = tasks.filter(t => t.employeeId === employee?.id || t.employeeName === employee?.name).sort((a, b) => b.date.localeCompare(a.date));
-  const myAssignedAccounts = projects.filter(p => 
-    p.department === 'ecommerce' && (p.handlerId === employee?.id || p.placerId === employee?.id)
-  );
+  const myAssignedAccounts = projects.filter(p => {
+    if (p.department !== 'ecommerce') return false;
+    const isHandler = p.handlerId === employee?.id || p.handlerName?.toLowerCase() === employee?.name.toLowerCase();
+    const isPlacer = p.placerId === employee?.id || p.placerName?.toLowerCase() === employee?.name.toLowerCase();
+    return isHandler || isPlacer;
+  });
 
   const handleCheckIn = async () => {
     if (!employee) return;
@@ -117,6 +125,11 @@ export default function EmployeePortal() {
       return;
     }
 
+    // Validation for reasons if Pending
+    if (perfData.ordersStatus === 'Pending' && !perfData.ordersReason) { Swal.fire('Reason Required', 'Please provide a reason for Pending Orders.', 'warning'); return; }
+    if (perfData.trackingStatus === 'Pending' && !perfData.trackingReason) { Swal.fire('Reason Required', 'Please provide a reason for Pending Tracking.', 'warning'); return; }
+    if (perfData.sheetsStatus === 'Pending' && !perfData.sheetsReason) { Swal.fire('Reason Required', 'Please provide a reason for Pending Sheets.', 'warning'); return; }
+
     const profit = Number(perfData.netProfit) || 0;
     const sales = Number(perfData.sales) || 0;
     const roi = sales > 0 ? (profit / sales) * 100 : 0;
@@ -133,12 +146,18 @@ export default function EmployeePortal() {
       projectsAssigned: 0, projectsCompleted: 0, pendingProjects: 0, approvedProjects: 0, rejectedProjects: 0, clientResponses: 0, leadsGenerated: 0, emailsSent: 0, conversionRatio: 0,
       sales, netProfit: profit, listings: Number(perfData.listings) || 0,
       accountName: perfData.accountName || 'Store',
-      targetProfit: 5000
+      targetProfit: 5000,
+      ordersStatus: perfData.ordersStatus,
+      ordersReason: perfData.ordersReason,
+      trackingStatus: perfData.trackingStatus,
+      trackingReason: perfData.trackingReason,
+      sheetsStatus: perfData.sheetsStatus,
+      sheetsReason: perfData.sheetsReason
     };
 
     await addTask(task);
     setShowPerfModal(false);
-    setPerfData({ date: getCurrentDate(), sales: 0, netProfit: 0, listings: 0, accountName: '', task: '' });
+    setPerfData({ date: getCurrentDate(), sales: 0, netProfit: 0, listings: 0, accountName: '', task: '', ordersStatus:'Done', trackingStatus:'Done', sheetsStatus:'Done', ordersReason:'', trackingReason:'', sheetsReason:'' });
     Swal.fire({ title: 'Logged!', icon: 'success', timer: 1000, showConfirmButton: false });
   };
 
@@ -198,7 +217,7 @@ export default function EmployeePortal() {
         )}
 
         {view === 'history' && (
-           <div style={{ background: '#fff', borderRadius: '24px', padding: '30px', boxShadow: 'var(--shadow)', border: '1px solid #e2e8f0' }}>
+           <div style={{ background: '#fff', borderRadius: '24px', padding: '30px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
               <h3 style={{ fontSize: '16px', fontWeight: '900', color: '#0f172a', marginBottom: '20px' }}>Hazri Ledger (Last 30 Days)</h3>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
@@ -222,7 +241,7 @@ export default function EmployeePortal() {
         )}
 
         {view === 'performance' && (
-           <div style={{ background: '#fff', borderRadius: '24px', padding: '30px', boxShadow: 'var(--shadow)', border: '1px solid #e2e8f0' }}>
+           <div style={{ background: '#fff', borderRadius: '24px', padding: '30px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
                 <h3 style={{ fontSize: '16px', fontWeight: '900', color: '#0f172a' }}>📊 My Account Performance</h3>
                 <button onClick={() => { setPerfData({...perfData, accountName: myAssignedAccounts[0]?.projectName || '', date: getCurrentDate()}); setShowPerfModal(true); }} style={{ background: '#0f172a', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>+ Log Daily Entry</button>
@@ -231,7 +250,7 @@ export default function EmployeePortal() {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                     <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                        <th style={thStyle}>Date</th><th style={thStyle}>Account</th><th style={thStyle}>Sales</th><th style={thStyle}>Profit</th><th style={thStyle}>ROI</th><th style={thStyle}>Listings</th>
+                        <th style={thStyle}>Date</th><th style={thStyle}>Account</th><th style={thStyle}>Sales</th><th style={thStyle}>Profit</th><th style={thStyle}>Status (O/T/S)</th><th style={thStyle}>ROI</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -241,8 +260,12 @@ export default function EmployeePortal() {
                             <td style={tdStyle}><strong>{t.accountName}</strong></td>
                             <td style={tdStyle}>$ {t.sales?.toLocaleString()}</td>
                             <td style={{ ...tdStyle, color: '#059669', fontWeight: 'bold' }}>$ {t.netProfit?.toLocaleString()}</td>
+                            <td style={tdStyle}>
+                               <span title={`Orders: ${t.ordersStatus} | Tracking: ${t.trackingStatus} | Sheets: ${t.sheetsStatus}`} style={{fontSize:'10px', fontWeight:'900', color:'#1e40af'}}>
+                                 {t.ordersStatus?.charAt(0)}/{t.trackingStatus?.charAt(0)}/{t.sheetsStatus?.charAt(0)}
+                               </span>
+                            </td>
                             <td style={tdStyle}>{t.sales ? ((t.netProfit! / t.sales!) * 100).toFixed(1) : 0}%</td>
-                            <td style={tdStyle}>{t.listings || 0}</td>
                         </tr>
                     ))}
                     </tbody>
@@ -254,9 +277,12 @@ export default function EmployeePortal() {
 
       {/* 💰 PERFORMANCE MODAL */}
       {showPerfModal && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.8)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
-             <div style={{ background: '#fff', borderRadius: '24px', width: '90%', maxWidth: '500px', padding: '30px' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a', marginBottom: '20px' }}>New Daily Report</h3>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.8)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding:'20px' }}>
+             <div style={{ background: '#fff', borderRadius: '24px', width: '100%', maxWidth: '600px', padding: '30px', maxHeight:'90vh', overflowY:'auto' }}>
+                <div style={{display:'flex', justifyContent:'space-between', marginBottom:'20px'}}>
+                    <h3 style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>New Daily Report</h3>
+                    <button onClick={() => setShowPerfModal(false)} style={{background:'none', border:'none', fontSize:'20px', cursor:'pointer'}}>✕</button>
+                </div>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '15px', marginBottom: '15px' }}>
                     <div>
@@ -272,7 +298,7 @@ export default function EmployeePortal() {
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '15px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '20px' }}>
                     <div>
                         <label style={labelStyle}>DAILY SALE ($)</label>
                         <input type="number" value={perfData.sales} onChange={(e) => setPerfData({...perfData, sales: Number(e.target.value)})} style={inputStyle} />
@@ -287,9 +313,56 @@ export default function EmployeePortal() {
                     </div>
                 </div>
 
+                {/* 🛡️ SPECIALIZED E-COM STATUSES */}
+                <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '15px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', marginBottom:'15px' }}>
+                        <div>
+                            <label style={{...labelStyle, color:'#1e40af'}}>ORDERS</label>
+                            <select value={perfData.ordersStatus} onChange={(e) => setPerfData({...perfData, ordersStatus: e.target.value as any})} style={inputStyle}>
+                                <option value="Done">Done</option>
+                                <option value="Pending">Pending</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style={{...labelStyle, color:'#1e40af'}}>TRACKING</label>
+                            <select value={perfData.trackingStatus} onChange={(e) => setPerfData({...perfData, trackingStatus: e.target.value as any})} style={inputStyle}>
+                                <option value="Done">Done</option>
+                                <option value="Pending">Pending</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style={{...labelStyle, color:'#1e40af'}}>SHEETS</label>
+                            <select value={perfData.sheetsStatus} onChange={(e) => setPerfData({...perfData, sheetsStatus: e.target.value as any})} style={inputStyle}>
+                                <option value="Done">Done</option>
+                                <option value="Pending">Pending</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* DYNAMIC REASON BOXES */}
+                    {perfData.ordersStatus === 'Pending' && (
+                        <div style={{marginBottom:'10px'}}>
+                            <label style={{...labelStyle, color:'#dc2626'}}>ORDERS PENDING REASON</label>
+                            <input type="text" value={perfData.ordersReason} onChange={(e) => setPerfData({...perfData, ordersReason: e.target.value})} placeholder="Why is this pending?" style={{...inputStyle, borderColor:'#fecaca'}} />
+                        </div>
+                    )}
+                    {perfData.trackingStatus === 'Pending' && (
+                        <div style={{marginBottom:'10px'}}>
+                            <label style={{...labelStyle, color:'#dc2626'}}>TRACKING PENDING REASON</label>
+                            <input type="text" value={perfData.trackingReason} onChange={(e) => setPerfData({...perfData, trackingReason: e.target.value})} placeholder="Why is this pending?" style={{...inputStyle, borderColor:'#fecaca'}} />
+                        </div>
+                    )}
+                    {perfData.sheetsStatus === 'Pending' && (
+                        <div style={{marginBottom:'10px'}}>
+                            <label style={{...labelStyle, color:'#dc2626'}}>SHEETS PENDING REASON</label>
+                            <input type="text" value={perfData.sheetsReason} onChange={(e) => setPerfData({...perfData, sheetsReason: e.target.value})} placeholder="Why is this pending?" style={{...inputStyle, borderColor:'#fecaca'}} />
+                        </div>
+                    )}
+                </div>
+
                 <div style={{ marginBottom: '25px' }}>
-                    <label style={labelStyle}>DAILY NOTE / LATEST ISSUE</label>
-                    <textarea value={perfData.task} onChange={(e) => setPerfData({...perfData, task: e.target.value})} placeholder="Report any account issues or notes here..." style={{...inputStyle, height: '80px', resize:'none'}} />
+                    <label style={labelStyle}>DAILY NOTE / GENERAL ISSUE</label>
+                    <textarea value={perfData.task} onChange={(e) => setPerfData({...perfData, task: e.target.value})} placeholder="Report any roadblocks or additional notes..." style={{...inputStyle, height: '60px', resize:'none'}} />
                 </div>
 
                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>

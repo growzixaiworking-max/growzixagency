@@ -148,8 +148,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const hasInitializedNotifs = useRef(false);
-  const lastProcessedDateRef = useRef<string>('');
   const pendingProjectUpdates = useRef<Set<string>>(new Set());
+  const pendingTaskUpdates = useRef<Set<string>>(new Set());
 
   const fetchData = async () => {
     try {
@@ -165,7 +165,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       if (empData) setEmployees(empData as Employee[]);
       if (attData) setAttendance(attData as AttendanceRecord[]);
-      if (taskData) setTasks(taskData as any);
+      
+      if (taskData) {
+        setTasks(prev => {
+          const fresh = taskData as TaskLog[];
+          return prev.map(t => {
+            if (pendingTaskUpdates.current.has(t.id)) return t;
+            const updated = fresh.find(f => f.id === t.id);
+            return updated || t;
+          }).concat(fresh.filter(f => !prev.some(t => t.id === f.id)));
+        });
+      }
+
       if (expData) setExpenses(expData as any);
       if (incData) setIncome(incData as Income[]);
       if (logData) setAuditLogs(logData as AuditLog[]);
@@ -185,7 +196,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (projectData) {
-        setProjects(projectData as Project[]);
+        setProjects(prev => {
+          const freshProjects = projectData as any;
+          return prev.map(p => {
+            if (pendingProjectUpdates.current.has(p.id)) return p;
+            const fresh = freshProjects.find((fp: any) => fp.id === p.id);
+            return fresh || p;
+          }).concat(freshProjects.filter((fp: any) => !prev.some(p => p.id === fp.id)));
+        });
       }
       setSchedules(scheduleData as MonthlySchedule[]);
       setBills(billData as Bill[]);
@@ -213,7 +231,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 12000); // 🚀 OPTIMIZED: 12s background sync for better performance
+    const interval = setInterval(fetchData, 12000); // 🚀 OPTIMIZED: 12s background sync
     const savedUser = localStorage.getItem('growzix-user');
     if (savedUser) setCurrentUser(JSON.parse(savedUser));
     const savedTheme = localStorage.getItem('growzix-theme') as ThemeColor;
@@ -330,13 +348,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addTask = async (task: TaskLog) => {
+    pendingTaskUpdates.current.add(task.id);
     setTasks(prev => [task, ...prev]);
-    try { await actions.addTaskAction(task); } catch (e) {}
+    try { await actions.addTaskAction(task); } catch (e) {} finally {
+      setTimeout(() => pendingTaskUpdates.current.delete(task.id), 3000);
+    }
   };
 
   const updateTask = async (id: string, updates: Partial<TaskLog>) => {
+    pendingTaskUpdates.current.add(id);
     setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
-    try { await actions.updateTaskAction(id, updates); } catch (e) {}
+    try { await actions.updateTaskAction(id, updates); } catch (e) {} finally {
+      setTimeout(() => pendingTaskUpdates.current.delete(id), 3000);
+    }
   };
 
   const deleteTask = async (id: string) => {
