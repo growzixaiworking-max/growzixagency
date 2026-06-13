@@ -63,6 +63,9 @@ export default function EmployeePortal() {
 
   // 📈 PERFORMANCE LOGIC
   const myPerformance = tasks.filter(t => t.employeeId === employee?.id || t.employeeName === employee?.name).sort((a, b) => b.date.localeCompare(a.date));
+  // 🛡️ RESTRICTION: Only E-Commerce is limited to one entry per day
+  const isPerformanceDoneToday = isEcom && !!myPerformance.find(t => t.date === getCurrentDate());
+
   const myAssignedAccounts = projects.filter(p => {
     if (p.department !== 'ecommerce') return false;
     const isHandler = p.handlerId === employee?.id || p.handlerName?.toLowerCase() === employee?.name.toLowerCase();
