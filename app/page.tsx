@@ -1,10 +1,6 @@
 'use client';
 
-import { useApp } from '@/context/AppContext';
-import LoginPage from '@/components/LoginPage';
-import MainApp from '@/components/MainApp';
-import EmployeePortal from '@/components/EmployeePortal';
-import Loader from '@/components/Loader';
+
 
 export default function Home() {
   const { currentUser, isLoading } = useApp();
